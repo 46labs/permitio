@@ -86,13 +86,40 @@ func (s *Server) routeFacts(w http.ResponseWriter, r *http.Request) {
 	s.handleFactsRoute(w, r, rest)
 }
 
-// Stub routers — these will be implemented in subsequent tasks
-func (s *Server) handleSchemaRoute(w http.ResponseWriter, _ *http.Request, _ []string) {
-	writeError(w, http.StatusNotImplemented, "not implemented yet")
+func (s *Server) handleSchemaRoute(w http.ResponseWriter, r *http.Request, rest []string) {
+	if len(rest) == 0 {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	switch rest[0] {
+	case "resources":
+		s.handleResources(w, r, rest[1:])
+	case "roles":
+		s.handleRoles(w, r, rest[1:])
+	default:
+		writeError(w, http.StatusNotFound, "not found")
+	}
 }
 
-func (s *Server) handleFactsRoute(w http.ResponseWriter, _ *http.Request, _ []string) {
-	writeError(w, http.StatusNotImplemented, "not implemented yet")
+func (s *Server) handleFactsRoute(w http.ResponseWriter, r *http.Request, rest []string) {
+	if len(rest) == 0 {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	switch rest[0] {
+	case "tenants":
+		s.handleTenants(w, r, rest[1:])
+	case "users":
+		s.handleUsers(w, r, rest[1:])
+	case "resource_instances":
+		s.handleResourceInstances(w, r, rest[1:])
+	case "relationship_tuples":
+		s.handleRelationshipTuples(w, r, rest[1:])
+	case "role_assignments":
+		s.handleRoleAssignments(w, r, rest[1:])
+	default:
+		writeError(w, http.StatusNotFound, "not found")
+	}
 }
 
 func (s *Server) handleCheck(w http.ResponseWriter, _ *http.Request) {
