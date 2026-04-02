@@ -17,10 +17,10 @@ type checkUser struct {
 }
 
 type checkResource struct {
-	Type       string `json:"type"`
-	Key        string `json:"key,omitempty"`
-	ID         string `json:"id,omitempty"`
-	Tenant     string `json:"tenant,omitempty"`
+	Type   string `json:"type"`
+	Key    string `json:"key,omitempty"`
+	ID     string `json:"id,omitempty"`
+	Tenant string `json:"tenant,omitempty"`
 }
 
 func (cr *checkResource) instanceKey() string {

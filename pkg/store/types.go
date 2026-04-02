@@ -64,11 +64,11 @@ type ImplicitGrant struct {
 	RoleID           string `json:"role_id"`
 	ResourceID       string `json:"resource_id"`
 	RelationID       string `json:"relation_id"`
-	Role             string `json:"role"`              // source role key (user must have this)
-	OnResource       string `json:"on_resource"`       // source resource type
+	Role             string `json:"role"`               // source role key (user must have this)
+	OnResource       string `json:"on_resource"`        // source resource type
 	LinkedByRelation string `json:"linked_by_relation"` // relation to follow
-	TargetResource   string `json:"-"`                 // target resource type (from URL path)
-	TargetRole       string `json:"-"`                 // target role key (from URL path)
+	TargetResource   string `json:"-"`                  // target resource type (from URL path)
+	TargetRole       string `json:"-"`                  // target role key (from URL path)
 }
 
 // --- Facts types ---

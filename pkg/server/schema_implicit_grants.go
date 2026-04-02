@@ -32,10 +32,10 @@ func (s *Server) handleImplicitGrants(w http.ResponseWriter, r *http.Request, re
 		// Return DerivedRoleRuleRead format
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"role_id":            result.RoleID,
-			"resource_id":       result.ResourceID,
-			"relation_id":       result.RelationID,
-			"role":              result.Role,
-			"on_resource":       result.OnResource,
+			"resource_id":        result.ResourceID,
+			"relation_id":        result.RelationID,
+			"role":               result.Role,
+			"on_resource":        result.OnResource,
 			"linked_by_relation": result.LinkedByRelation,
 		})
 

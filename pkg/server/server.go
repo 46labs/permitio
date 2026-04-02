@@ -121,4 +121,3 @@ func (s *Server) handleFactsRoute(w http.ResponseWriter, r *http.Request, rest [
 		writeError(w, http.StatusNotFound, "not found")
 	}
 }
-

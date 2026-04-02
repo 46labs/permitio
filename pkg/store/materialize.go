@@ -217,9 +217,9 @@ func (s *Store) CheckPermission(user, action, resourceType, instanceKey, tenant 
 
 // TenantCheckResult represents a single tenant's check result.
 type TenantCheckResult struct {
-	Allow  bool                   `json:"allow"`
-	Result bool                   `json:"result"`
-	Tenant TenantResult           `json:"tenant"`
+	Allow  bool         `json:"allow"`
+	Result bool         `json:"result"`
+	Tenant TenantResult `json:"tenant"`
 }
 
 // TenantResult represents tenant info in a check response.

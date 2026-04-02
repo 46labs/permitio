@@ -45,17 +45,17 @@ type Store struct {
 
 func New() *Store {
 	return &Store{
-		resources:          make(map[string]*Resource),
-		roles:              make(map[string]*Role),
-		resourceRoles:      make(map[string]map[string]*ResourceRole),
-		relations:          make(map[string]map[string]*Relation),
-		tenants:            make(map[string]*Tenant),
-		users:              make(map[string]*User),
-		resourceInstances:  make(map[string]*ResourceInstance),
-		tupleIndex:         make(map[string]map[string][]string),
-		effectivePerms:     make(map[string]bool),
-		userPerms:          make(map[string]map[string][]string),
-		userRoles:          make(map[string]map[string][]string),
+		resources:         make(map[string]*Resource),
+		roles:             make(map[string]*Role),
+		resourceRoles:     make(map[string]map[string]*ResourceRole),
+		relations:         make(map[string]map[string]*Relation),
+		tenants:           make(map[string]*Tenant),
+		users:             make(map[string]*User),
+		resourceInstances: make(map[string]*ResourceInstance),
+		tupleIndex:        make(map[string]map[string][]string),
+		effectivePerms:    make(map[string]bool),
+		userPerms:         make(map[string]map[string][]string),
+		userRoles:         make(map[string]map[string][]string),
 	}
 }
 
