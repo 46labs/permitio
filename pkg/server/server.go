@@ -1,0 +1,112 @@
+package server
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/46labs/permitio/pkg/config"
+	"github.com/46labs/permitio/pkg/store"
+)
+
+type Server struct {
+	cfg   *config.Config
+	store *store.Store
+}
+
+func New(cfg *config.Config) *Server {
+	st := store.New()
+	st.Seed(cfg)
+	st.Materialize()
+
+	return &Server{
+		cfg:   cfg,
+		store: st,
+	}
+}
+
+// NewWithStore creates a server with an existing store (for testing)
+func NewWithStore(cfg *config.Config, st *store.Store) *Server {
+	return &Server{
+		cfg:   cfg,
+		store: st,
+	}
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	// API key scope (SDK calls this first to resolve project/env context)
+	mux.HandleFunc("/v2/api-key/scope", s.handleAPIKeyScope)
+
+	// Schema endpoints: /v2/schema/{proj}/{env}/...
+	mux.HandleFunc("/v2/schema/", s.routeSchema)
+
+	// Facts endpoints: /v2/facts/{proj}/{env}/...
+	mux.HandleFunc("/v2/facts/", s.routeFacts)
+
+	// PDP check endpoints
+	mux.HandleFunc("/allowed", s.handleCheck)
+	mux.HandleFunc("/allowed/bulk", s.handleBulkCheck)
+	mux.HandleFunc("/allowed/all-tenants", s.handleAllTenantsCheck)
+	mux.HandleFunc("/user-permissions", s.handleUserPermissions)
+
+	return logMiddleware(mux)
+}
+
+func (s *Server) Start() error {
+	addr := fmt.Sprintf(":%d", s.cfg.Port)
+	log.Printf("Starting permit.io mock on %s", addr)
+	log.Printf("PDP API: POST /allowed")
+	log.Printf("Management API: /v2/schema/... and /v2/facts/...")
+	return http.ListenAndServe(addr, s.Handler())
+}
+
+// routeSchema handles all /v2/schema/{proj}/{env}/... requests
+func (s *Server) routeSchema(w http.ResponseWriter, r *http.Request) {
+	// Strip /v2/schema/{proj}/{env}/ prefix — segments: [proj, env, resource_type, ...]
+	segs := extractPathSegments(r.URL.Path, "/v2/schema")
+	if len(segs) < 3 {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	// segs[0] = proj, segs[1] = env, segs[2:] = resource path
+	rest := segs[2:]
+	s.handleSchemaRoute(w, r, rest)
+}
+
+// routeFacts handles all /v2/facts/{proj}/{env}/... requests
+func (s *Server) routeFacts(w http.ResponseWriter, r *http.Request) {
+	segs := extractPathSegments(r.URL.Path, "/v2/facts")
+	if len(segs) < 3 {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	rest := segs[2:]
+	s.handleFactsRoute(w, r, rest)
+}
+
+// Stub routers — these will be implemented in subsequent tasks
+func (s *Server) handleSchemaRoute(w http.ResponseWriter, _ *http.Request, _ []string) {
+	writeError(w, http.StatusNotImplemented, "not implemented yet")
+}
+
+func (s *Server) handleFactsRoute(w http.ResponseWriter, _ *http.Request, _ []string) {
+	writeError(w, http.StatusNotImplemented, "not implemented yet")
+}
+
+func (s *Server) handleCheck(w http.ResponseWriter, _ *http.Request) {
+	writeError(w, http.StatusNotImplemented, "not implemented yet")
+}
+
+func (s *Server) handleBulkCheck(w http.ResponseWriter, _ *http.Request) {
+	writeError(w, http.StatusNotImplemented, "not implemented yet")
+}
+
+func (s *Server) handleAllTenantsCheck(w http.ResponseWriter, _ *http.Request) {
+	writeError(w, http.StatusNotImplemented, "not implemented yet")
+}
+
+func (s *Server) handleUserPermissions(w http.ResponseWriter, _ *http.Request) {
+	writeError(w, http.StatusNotImplemented, "not implemented yet")
+}

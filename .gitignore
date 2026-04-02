@@ -1,0 +1,7 @@
+bin/
+*.exe
+*.test
+*.out
+.env
+dev/certs/
+.claude/settings.local.json
