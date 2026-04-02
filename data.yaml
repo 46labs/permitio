@@ -1,0 +1,36 @@
+tenants:
+  - key: default
+    name: Default Tenant
+
+users:
+  - key: alice@example.com
+    email: alice@example.com
+    first_name: Alice
+    last_name: Smith
+  - key: bob@example.com
+    email: bob@example.com
+    first_name: Bob
+    last_name: Jones
+
+resource_instances:
+  - key: root-folder
+    resource: folder
+    tenant: default
+  - key: readme
+    resource: document
+    tenant: default
+
+relationship_tuples:
+  - subject: folder:root-folder
+    relation: parent
+    object: document:readme
+
+role_assignments:
+  - user: alice@example.com
+    role: owner
+    tenant: default
+    resource_instance: folder:root-folder
+  - user: bob@example.com
+    role: viewer
+    tenant: default
+    resource_instance: folder:root-folder

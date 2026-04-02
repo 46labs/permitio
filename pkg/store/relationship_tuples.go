@@ -18,6 +18,7 @@ func (s *Store) CreateRelationshipTuple(subject, relation, object string, tenant
 		}
 	}
 	s.relationshipTuples = append(s.relationshipTuples, rt)
+	s.materializeUnlocked()
 	return &rt, nil
 }
 
@@ -35,6 +36,7 @@ func (s *Store) DeleteRelationshipTuple(subject, relation, object string) error 
 	for i, rt := range s.relationshipTuples {
 		if rt.Subject == subject && rt.Relation == relation && rt.Object == object {
 			s.relationshipTuples = append(s.relationshipTuples[:i], s.relationshipTuples[i+1:]...)
+			s.materializeUnlocked()
 			return nil
 		}
 	}

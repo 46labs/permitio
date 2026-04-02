@@ -156,6 +156,8 @@ func (s *Store) Seed(cfg *config.Config) {
 			Role:             ig.Role,
 			OnResource:       ig.OnResource,
 			LinkedByRelation: ig.LinkedByRelation,
+			TargetResource:   ig.Resource,
+			TargetRole:       ig.DerivedRole,
 		})
 	}
 

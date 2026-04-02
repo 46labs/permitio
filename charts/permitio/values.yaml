@@ -1,0 +1,31 @@
+image:
+  repository: ghcr.io/46labs/permitio
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 7766
+
+ingress:
+  enabled: false
+  host: permitio.46labs.test
+  tls:
+    enabled: false
+    secretName: ""
+
+config:
+  port: 7766
+
+schema:
+  mode: ""
+  resources: []
+  roles: []
+  implicit_grants: []
+
+data:
+  tenants: []
+  users: []
+  resource_instances: []
+  relationship_tuples: []
+  role_assignments: []

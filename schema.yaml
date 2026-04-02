@@ -1,0 +1,77 @@
+resources:
+  - key: folder
+    name: Folder
+    actions:
+      read: {}
+      write: {}
+      delete: {}
+    roles:
+      - key: owner
+        name: Owner
+        permissions:
+          - read
+          - write
+          - delete
+      - key: editor
+        name: Editor
+        permissions:
+          - read
+          - write
+      - key: viewer
+        name: Viewer
+        permissions:
+          - read
+    relations:
+      - key: parent
+        name: Parent Folder
+        subject_resource: folder
+
+  - key: document
+    name: Document
+    actions:
+      read: {}
+      write: {}
+      delete: {}
+    roles:
+      - key: owner
+        name: Owner
+        permissions:
+          - read
+          - write
+          - delete
+      - key: editor
+        name: Editor
+        permissions:
+          - read
+          - write
+      - key: viewer
+        name: Viewer
+        permissions:
+          - read
+    relations:
+      - key: parent
+        name: Parent Folder
+        subject_resource: folder
+
+roles:
+  - key: admin
+    name: Admin
+    permissions:
+      - folder:read
+      - folder:write
+      - folder:delete
+      - document:read
+      - document:write
+      - document:delete
+  - key: member
+    name: Member
+    permissions:
+      - folder:read
+      - document:read
+
+implicit_grants:
+  - resource: document
+    role: viewer
+    on_resource: folder
+    derived_role: viewer
+    linked_by_relation: parent

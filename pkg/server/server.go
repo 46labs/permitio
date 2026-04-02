@@ -46,10 +46,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v2/facts/", s.routeFacts)
 
 	// PDP check endpoints
-	mux.HandleFunc("/allowed", s.handleCheck)
-	mux.HandleFunc("/allowed/bulk", s.handleBulkCheck)
-	mux.HandleFunc("/allowed/all-tenants", s.handleAllTenantsCheck)
-	mux.HandleFunc("/user-permissions", s.handleUserPermissions)
+	mux.HandleFunc("/allowed", s.handleCheckImpl)
+	mux.HandleFunc("/allowed/bulk", s.handleBulkCheckImpl)
+	mux.HandleFunc("/allowed/all-tenants", s.handleAllTenantsCheckImpl)
+	mux.HandleFunc("/user-permissions", s.handleUserPermissionsImpl)
 
 	return logMiddleware(mux)
 }
@@ -122,18 +122,3 @@ func (s *Server) handleFactsRoute(w http.ResponseWriter, r *http.Request, rest [
 	}
 }
 
-func (s *Server) handleCheck(w http.ResponseWriter, _ *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not implemented yet")
-}
-
-func (s *Server) handleBulkCheck(w http.ResponseWriter, _ *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not implemented yet")
-}
-
-func (s *Server) handleAllTenantsCheck(w http.ResponseWriter, _ *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not implemented yet")
-}
-
-func (s *Server) handleUserPermissions(w http.ResponseWriter, _ *http.Request) {
-	writeError(w, http.StatusNotImplemented, "not implemented yet")
-}

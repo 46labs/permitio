@@ -3,6 +3,9 @@ package store
 func (s *Store) CreateImplicitGrant(resourceKey, roleKey string, ig ImplicitGrant) (*ImplicitGrant, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Store target resource and role from the URL path.
+	ig.TargetResource = resourceKey
+	ig.TargetRole = roleKey
 	// Fill in IDs if possible
 	if res, ok := s.resources[ig.OnResource]; ok {
 		ig.ResourceID = res.ID
@@ -18,6 +21,7 @@ func (s *Store) CreateImplicitGrant(resourceKey, roleKey string, ig ImplicitGran
 		}
 	}
 	s.implicitGrants = append(s.implicitGrants, ig)
+	s.materializeUnlocked()
 	return &ig, nil
 }
 
@@ -27,6 +31,7 @@ func (s *Store) DeleteImplicitGrant(resourceKey, roleKey string, ig ImplicitGran
 	for i, existing := range s.implicitGrants {
 		if existing.Role == ig.Role && existing.OnResource == ig.OnResource && existing.LinkedByRelation == ig.LinkedByRelation {
 			s.implicitGrants = append(s.implicitGrants[:i], s.implicitGrants[i+1:]...)
+			s.materializeUnlocked()
 			return nil
 		}
 	}

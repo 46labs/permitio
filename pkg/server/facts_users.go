@@ -130,7 +130,7 @@ func (s *Server) handleUserRoles(w http.ResponseWriter, r *http.Request, userKey
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		ra, err := s.store.CreateRoleAssignment(userKey, body.Role, body.Tenant)
+		ra, err := s.store.CreateRoleAssignmentWithInstance(userKey, body.Role, body.Tenant, body.ResourceInstance)
 		if err != nil {
 			writeError(w, http.StatusConflict, err.Error())
 			return
