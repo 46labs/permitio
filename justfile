@@ -4,8 +4,9 @@ default:
 	@echo "Usage:"
 	@echo "  just docker - Build and run container on localhost:7766"
 	@echo "  just kind   - Create Kind cluster + start Tilt"
-	@echo "  just ci     - Run gofmt check, tests, and lint"
-	@echo "  just down   - Stop docker, tilt down, delete kind cluster"
+	@echo "  just ci        - Run gofmt check, tests, and lint (local)"
+	@echo "  just ci-docker - Run CI in Docker (identical to GitHub Actions)"
+	@echo "  just down      - Stop docker, tilt down, delete kind cluster"
 
 docker:
 	@echo "Building..."
@@ -18,12 +19,38 @@ docker:
 	@echo "API: http://localhost:7766/v2/schema/resources"
 
 ci:
-	@echo "Checking format..."
-	@gofmt -l .
-	@echo "Running tests..."
-	@go test -v ./pkg/...
-	@echo "Running linter..."
-	@golangci-lint run
+	#!/usr/bin/env bash
+	set -euo pipefail
+	echo "Checking format..."
+	unformatted=$(gofmt -l .)
+	if [ -n "$unformatted" ]; then
+		echo "Files not formatted:"
+		echo "$unformatted"
+		exit 1
+	fi
+	echo "Running tests..."
+	go test -v ./pkg/...
+	echo "Running linter..."
+	golangci-lint run
+
+# Run CI in Docker — identical to GitHub Actions pipeline
+ci-docker:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	echo "Running CI in Docker (matches GitHub Actions)..."
+	docker run --rm \
+		-v "$(pwd):/app" \
+		-w /app \
+		golangci/golangci-lint:v2.4.0 \
+		bash -c ' \
+			echo "=== Checking format ===" && \
+			unformatted=$(gofmt -l .) && \
+			if [ -n "$unformatted" ]; then echo "Files not formatted:"; echo "$unformatted"; exit 1; fi && \
+			echo "=== Running tests ===" && \
+			go test -v ./pkg/... && \
+			echo "=== Running linter ===" && \
+			golangci-lint run && \
+			echo "=== ALL PASSED ==="'
 
 # Context safety check
 _context-guard:

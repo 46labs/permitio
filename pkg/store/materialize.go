@@ -208,11 +208,7 @@ func (s *Store) CheckPermission(user, action, resourceType, instanceKey, tenant 
 
 	// Check wildcard (global role) permission.
 	wildcardKey := fmt.Sprintf("%s|%s|%s|*|%s", user, action, resourceType, tenant)
-	if s.effectivePerms[wildcardKey] {
-		return true
-	}
-
-	return false
+	return s.effectivePerms[wildcardKey]
 }
 
 // TenantCheckResult represents a single tenant's check result.
