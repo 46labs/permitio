@@ -45,6 +45,12 @@ func (s *Server) Handler() http.Handler {
 	// Facts endpoints: /v2/facts/{proj}/{env}/...
 	mux.HandleFunc("/v2/facts/", s.routeFacts)
 
+	// Health
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+
 	// PDP check endpoints
 	mux.HandleFunc("/allowed", s.handleCheckImpl)
 	mux.HandleFunc("/allowed/bulk", s.handleBulkCheckImpl)
