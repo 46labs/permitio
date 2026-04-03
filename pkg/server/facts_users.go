@@ -120,6 +120,14 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request, segs []stri
 
 func (s *Server) handleUserRoles(w http.ResponseWriter, r *http.Request, userKey string) {
 	switch r.Method {
+	case http.MethodGet:
+		tenant := r.URL.Query().Get("tenant")
+		assignments := s.store.ListRoleAssignmentsForUser(userKey, tenant)
+		if assignments == nil {
+			assignments = []store.RoleAssignment{}
+		}
+		writeJSON(w, http.StatusOK, assignments)
+
 	case http.MethodPost:
 		var body struct {
 			Role             string  `json:"role"`

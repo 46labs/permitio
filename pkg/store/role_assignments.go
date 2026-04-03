@@ -69,6 +69,23 @@ func (s *Store) DeleteRoleAssignmentWithInstance(user, role, tenant string, reso
 	return fmt.Errorf("role assignment not found")
 }
 
+func (s *Store) ListRoleAssignmentsForUser(userKey, tenantKey string) []RoleAssignment {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var result []RoleAssignment
+	for _, ra := range s.roleAssignments {
+		if ra.User != userKey {
+			continue
+		}
+		if tenantKey != "" && ra.Tenant != tenantKey {
+			continue
+		}
+		result = append(result, ra)
+	}
+	return result
+}
+
 func ptrStrEq(a, b *string) bool {
 	if a == nil && b == nil {
 		return true
