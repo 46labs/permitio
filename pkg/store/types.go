@@ -113,6 +113,20 @@ type RelationshipTuple struct {
 	TenantID   string `json:"tenant_id"`
 }
 
+type ResourceActionRead struct {
+	ID             string    `json:"id"`
+	Key            string    `json:"key"`
+	Name           string    `json:"name"`
+	Description    *string   `json:"description,omitempty"`
+	PermissionName string    `json:"permission_name"`
+	ResourceID     string    `json:"resource_id"`
+	OrganizationID string    `json:"organization_id"`
+	ProjectID      string    `json:"project_id"`
+	EnvironmentID  string    `json:"environment_id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type RoleAssignment struct {
 	ID               string    `json:"id"`
 	User             string    `json:"user"`

@@ -27,6 +27,9 @@ func (s *Server) handleResources(w http.ResponseWriter, r *http.Request, segs []
 		case "relations":
 			s.handleRelations(w, r, resourceKey, segs[2:])
 			return
+		case "actions":
+			s.handleResourceActions(w, r, resourceKey, segs[2:])
+			return
 		}
 	}
 
