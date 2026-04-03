@@ -57,7 +57,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/allowed/all-tenants", s.handleAllTenantsCheckImpl)
 	mux.HandleFunc("/user-permissions", s.handleUserPermissionsImpl)
 
-	return logMiddleware(mux)
+	return corsMiddleware(logMiddleware(mux))
 }
 
 func (s *Server) Start() error {
