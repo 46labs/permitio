@@ -8,9 +8,19 @@ import (
 func (s *Server) handleRoles(w http.ResponseWriter, r *http.Request, segs []string) {
 	// segs: [] = list/create, [key] = get/update/delete
 	// [key, "permissions"] = assign/remove permissions
-	if len(segs) >= 2 && segs[1] == "permissions" {
-		s.handleRolePermissions(w, r, segs[0])
-		return
+	if len(segs) >= 2 {
+		switch segs[1] {
+		case "permissions":
+			s.handleRolePermissions(w, r, segs[0])
+			return
+		case "parents":
+			if len(segs) < 3 {
+				writeError(w, http.StatusNotFound, "not found")
+				return
+			}
+			s.handleRoleParents(w, r, segs[0], segs[2])
+			return
+		}
 	}
 
 	switch r.Method {
@@ -117,6 +127,29 @@ func (s *Server) handleRolePermissions(w http.ResponseWriter, r *http.Request, r
 			return
 		}
 		writeJSON(w, http.StatusOK, role)
+
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+func (s *Server) handleRoleParents(w http.ResponseWriter, r *http.Request, roleKey, parentKey string) {
+	switch r.Method {
+	case http.MethodPut:
+		role, err := s.store.AddParentRole(roleKey, parentKey)
+		if err != nil {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, role)
+
+	case http.MethodDelete:
+		_, err := s.store.RemoveParentRole(roleKey, parentKey)
+		if err != nil {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")

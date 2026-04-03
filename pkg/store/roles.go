@@ -113,3 +113,45 @@ func (s *Store) DeleteRole(key string) error {
 	delete(s.roles, key)
 	return nil
 }
+
+func (s *Store) AddParentRole(key, parentKey string) (*Role, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	role, ok := s.roles[key]
+	if !ok {
+		return nil, fmt.Errorf("role %q not found", key)
+	}
+	if _, ok := s.roles[parentKey]; !ok {
+		return nil, fmt.Errorf("parent role %q not found", parentKey)
+	}
+	for _, e := range role.Extends {
+		if e == parentKey {
+			return role, nil
+		}
+	}
+	role.Extends = append(role.Extends, parentKey)
+	role.UpdatedAt = time.Now().UTC()
+	s.materializeUnlocked()
+	return role, nil
+}
+
+func (s *Store) RemoveParentRole(key, parentKey string) (*Role, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	role, ok := s.roles[key]
+	if !ok {
+		return nil, fmt.Errorf("role %q not found", key)
+	}
+	filtered := make([]string, 0, len(role.Extends))
+	for _, e := range role.Extends {
+		if e != parentKey {
+			filtered = append(filtered, e)
+		}
+	}
+	role.Extends = filtered
+	role.UpdatedAt = time.Now().UTC()
+	s.materializeUnlocked()
+	return role, nil
+}
