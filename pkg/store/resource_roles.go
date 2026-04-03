@@ -142,3 +142,50 @@ func (s *Store) DeleteResourceRole(resourceKey, key string) error {
 	delete(roles, key)
 	return nil
 }
+
+func (s *Store) AddResourceRoleParent(resourceKey, roleKey, parentKey string) (*ResourceRole, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	roles, ok := s.resourceRoles[resourceKey]
+	if !ok {
+		return nil, fmt.Errorf("resource %q not found", resourceKey)
+	}
+	role, ok := roles[roleKey]
+	if !ok {
+		return nil, fmt.Errorf("role %q not found on resource %q", roleKey, resourceKey)
+	}
+	for _, e := range role.Extends {
+		if e == parentKey {
+			return role, nil
+		}
+	}
+	role.Extends = append(role.Extends, parentKey)
+	role.UpdatedAt = time.Now().UTC()
+	s.materializeUnlocked()
+	return role, nil
+}
+
+func (s *Store) RemoveResourceRoleParent(resourceKey, roleKey, parentKey string) (*ResourceRole, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	roles, ok := s.resourceRoles[resourceKey]
+	if !ok {
+		return nil, fmt.Errorf("resource %q not found", resourceKey)
+	}
+	role, ok := roles[roleKey]
+	if !ok {
+		return nil, fmt.Errorf("role %q not found on resource %q", roleKey, resourceKey)
+	}
+	filtered := make([]string, 0, len(role.Extends))
+	for _, e := range role.Extends {
+		if e != parentKey {
+			filtered = append(filtered, e)
+		}
+	}
+	role.Extends = filtered
+	role.UpdatedAt = time.Now().UTC()
+	s.materializeUnlocked()
+	return role, nil
+}

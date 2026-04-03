@@ -178,6 +178,13 @@ func (s *Server) handleResourceRoles(w http.ResponseWriter, r *http.Request, res
 		case "implicit_grants":
 			s.handleImplicitGrants(w, r, resourceKey, segs[0])
 			return
+		case "parents":
+			if len(segs) < 3 {
+				writeError(w, http.StatusNotFound, "not found")
+				return
+			}
+			s.handleResourceRoleParents(w, r, resourceKey, segs[0], segs[2])
+			return
 		}
 	}
 
@@ -344,6 +351,29 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request, resourc
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+func (s *Server) handleResourceRoleParents(w http.ResponseWriter, r *http.Request, resourceKey, roleKey, parentKey string) {
+	switch r.Method {
+	case http.MethodPut:
+		role, err := s.store.AddResourceRoleParent(resourceKey, roleKey, parentKey)
+		if err != nil {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, role)
+
+	case http.MethodDelete:
+		role, err := s.store.RemoveResourceRoleParent(resourceKey, roleKey, parentKey)
+		if err != nil {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, role)
 
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
