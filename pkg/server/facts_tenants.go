@@ -3,9 +3,25 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/46labs/permitio/pkg/store"
 )
 
 func (s *Server) handleTenants(w http.ResponseWriter, r *http.Request, segs []string) {
+	// Route: tenants/{key}/users
+	if len(segs) >= 2 && segs[1] == "users" {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		users := s.store.ListTenantUsers(segs[0])
+		if users == nil {
+			users = []*store.User{}
+		}
+		writeJSON(w, http.StatusOK, users)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodPost:
 		if len(segs) > 0 {

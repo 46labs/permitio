@@ -70,3 +70,23 @@ func (s *Store) DeleteTenant(key string) error {
 	delete(s.tenants, key)
 	return nil
 }
+
+func (s *Store) ListTenantUsers(tenantKey string) []*User {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	userKeys := make(map[string]bool)
+	for _, ra := range s.roleAssignments {
+		if ra.Tenant == tenantKey {
+			userKeys[ra.User] = true
+		}
+	}
+
+	var users []*User
+	for key := range userKeys {
+		if u, ok := s.users[key]; ok {
+			users = append(users, u)
+		}
+	}
+	return users
+}
