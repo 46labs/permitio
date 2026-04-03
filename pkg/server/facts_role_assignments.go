@@ -6,14 +6,12 @@ import (
 )
 
 func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, segs []string) {
-	// segs could be [] for base or ["bulk"] for bulk operations
 	isBulk := len(segs) > 0 && segs[0] == "bulk"
 
 	switch r.Method {
 	case http.MethodPost:
 		if isBulk {
-			// Bulk assign not needed for basic tests
-			w.WriteHeader(http.StatusOK)
+			s.handleBulkRoleAssignmentCreate(w, r)
 			return
 		}
 		var body struct {
@@ -38,13 +36,11 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 			return
 		}
 		assignments := s.store.ListRoleAssignments()
-		// The SDK expects a JSON array of RoleAssignmentRead
 		writeJSON(w, http.StatusOK, assignments)
 
 	case http.MethodDelete:
 		if isBulk {
-			// Bulk unassign
-			w.WriteHeader(http.StatusOK)
+			s.handleBulkRoleAssignmentDelete(w, r)
 			return
 		}
 		var body struct {
@@ -65,4 +61,46 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
+}
+
+func (s *Server) handleBulkRoleAssignmentCreate(w http.ResponseWriter, r *http.Request) {
+	var assignments []struct {
+		User   string `json:"user"`
+		Role   string `json:"role"`
+		Tenant string `json:"tenant"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&assignments); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	created := 0
+	for _, a := range assignments {
+		if _, err := s.store.CreateRoleAssignment(a.User, a.Role, a.Tenant); err == nil {
+			created++
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"assignments_created": created,
+	})
+}
+
+func (s *Server) handleBulkRoleAssignmentDelete(w http.ResponseWriter, r *http.Request) {
+	var unassignments []struct {
+		User   string `json:"user"`
+		Role   string `json:"role"`
+		Tenant string `json:"tenant"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&unassignments); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	removed := 0
+	for _, u := range unassignments {
+		if err := s.store.DeleteRoleAssignment(u.User, u.Role, u.Tenant); err == nil {
+			removed++
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"assignments_removed": removed,
+	})
 }
