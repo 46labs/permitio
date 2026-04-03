@@ -30,7 +30,7 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, ra)
+		writeJSON(w, http.StatusCreated, ra)
 
 	case http.MethodGet:
 		if isBulk {

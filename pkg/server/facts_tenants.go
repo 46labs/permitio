@@ -33,7 +33,7 @@ func (s *Server) handleTenants(w http.ResponseWriter, r *http.Request, segs []st
 		if body.Attributes != nil {
 			t.Attributes = body.Attributes
 		}
-		writeJSON(w, http.StatusOK, t)
+		writeJSON(w, http.StatusCreated, t)
 
 	case http.MethodGet:
 		if len(segs) == 0 {

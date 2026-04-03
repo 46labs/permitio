@@ -30,7 +30,7 @@ func (s *Server) handleRelationshipTuples(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, rt)
+		writeJSON(w, http.StatusCreated, rt)
 
 	case http.MethodGet:
 		if isBulk {

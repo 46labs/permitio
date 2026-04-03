@@ -29,7 +29,7 @@ func (s *Server) handleResourceInstances(w http.ResponseWriter, r *http.Request,
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, ri)
+		writeJSON(w, http.StatusCreated, ri)
 
 	case http.MethodGet:
 		if len(segs) == 0 {

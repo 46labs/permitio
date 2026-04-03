@@ -37,7 +37,7 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request, segs []stri
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, u)
+		writeJSON(w, http.StatusCreated, u)
 
 	case http.MethodGet:
 		if len(segs) == 0 {
