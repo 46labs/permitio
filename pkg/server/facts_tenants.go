@@ -18,7 +18,11 @@ func (s *Server) handleTenants(w http.ResponseWriter, r *http.Request, segs []st
 		if users == nil {
 			users = []*store.User{}
 		}
-		writeJSON(w, http.StatusOK, users)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"data":        users,
+			"total_count": len(users),
+			"page_count":  1,
+		})
 		return
 	}
 

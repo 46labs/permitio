@@ -35,7 +35,10 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
-		assignments := s.store.ListRoleAssignments()
+		userFilter := r.URL.Query().Get("user")
+		tenantFilter := r.URL.Query().Get("tenant")
+		roleFilter := r.URL.Query().Get("role")
+		assignments := s.store.ListRoleAssignmentsFiltered(userFilter, roleFilter, tenantFilter)
 		writeJSON(w, http.StatusOK, assignments)
 
 	case http.MethodDelete:

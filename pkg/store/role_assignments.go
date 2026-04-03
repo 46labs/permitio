@@ -52,6 +52,28 @@ func (s *Store) ListRoleAssignments() []RoleAssignment {
 	return result
 }
 
+func (s *Store) ListRoleAssignmentsFiltered(userFilter, roleFilter, tenantFilter string) []RoleAssignment {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []RoleAssignment
+	for _, ra := range s.roleAssignments {
+		if userFilter != "" && ra.User != userFilter {
+			continue
+		}
+		if roleFilter != "" && ra.Role != roleFilter {
+			continue
+		}
+		if tenantFilter != "" && ra.Tenant != tenantFilter {
+			continue
+		}
+		result = append(result, ra)
+	}
+	if result == nil {
+		result = []RoleAssignment{}
+	}
+	return result
+}
+
 func (s *Store) DeleteRoleAssignment(user, role, tenant string) error {
 	return s.DeleteRoleAssignmentWithInstance(user, role, tenant, nil)
 }
