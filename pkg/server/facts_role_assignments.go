@@ -15,15 +15,16 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 			return
 		}
 		var body struct {
-			User   string `json:"user"`
-			Role   string `json:"role"`
-			Tenant string `json:"tenant"`
+			User             string  `json:"user"`
+			Role             string  `json:"role"`
+			Tenant           string  `json:"tenant"`
+			ResourceInstance *string `json:"resource_instance,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		ra, err := s.store.CreateRoleAssignment(body.User, body.Role, body.Tenant)
+		ra, err := s.store.CreateRoleAssignmentWithInstance(body.User, body.Role, body.Tenant, body.ResourceInstance)
 		if err != nil {
 			writeError(w, http.StatusConflict, err.Error())
 			return
@@ -47,15 +48,16 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 			return
 		}
 		var body struct {
-			User   string `json:"user"`
-			Role   string `json:"role"`
-			Tenant string `json:"tenant"`
+			User             string  `json:"user"`
+			Role             string  `json:"role"`
+			Tenant           string  `json:"tenant"`
+			ResourceInstance *string `json:"resource_instance,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := s.store.DeleteRoleAssignment(body.User, body.Role, body.Tenant); err != nil {
+		if err := s.store.DeleteRoleAssignmentWithInstance(body.User, body.Role, body.Tenant, body.ResourceInstance); err != nil {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -68,9 +70,10 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 
 func (s *Server) handleBulkRoleAssignmentCreate(w http.ResponseWriter, r *http.Request) {
 	var assignments []struct {
-		User   string `json:"user"`
-		Role   string `json:"role"`
-		Tenant string `json:"tenant"`
+		User             string  `json:"user"`
+		Role             string  `json:"role"`
+		Tenant           string  `json:"tenant"`
+		ResourceInstance *string `json:"resource_instance,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&assignments); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -78,7 +81,7 @@ func (s *Server) handleBulkRoleAssignmentCreate(w http.ResponseWriter, r *http.R
 	}
 	created := 0
 	for _, a := range assignments {
-		if _, err := s.store.CreateRoleAssignment(a.User, a.Role, a.Tenant); err == nil {
+		if _, err := s.store.CreateRoleAssignmentWithInstance(a.User, a.Role, a.Tenant, a.ResourceInstance); err == nil {
 			created++
 		}
 	}
@@ -89,9 +92,10 @@ func (s *Server) handleBulkRoleAssignmentCreate(w http.ResponseWriter, r *http.R
 
 func (s *Server) handleBulkRoleAssignmentDelete(w http.ResponseWriter, r *http.Request) {
 	var unassignments []struct {
-		User   string `json:"user"`
-		Role   string `json:"role"`
-		Tenant string `json:"tenant"`
+		User             string  `json:"user"`
+		Role             string  `json:"role"`
+		Tenant           string  `json:"tenant"`
+		ResourceInstance *string `json:"resource_instance,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&unassignments); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -99,7 +103,7 @@ func (s *Server) handleBulkRoleAssignmentDelete(w http.ResponseWriter, r *http.R
 	}
 	removed := 0
 	for _, u := range unassignments {
-		if err := s.store.DeleteRoleAssignment(u.User, u.Role, u.Tenant); err == nil {
+		if err := s.store.DeleteRoleAssignmentWithInstance(u.User, u.Role, u.Tenant, u.ResourceInstance); err == nil {
 			removed++
 		}
 	}
