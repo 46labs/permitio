@@ -280,32 +280,37 @@ func TestReBACEnforcement(t *testing.T) {
 			t.Fatalf("GetUserPermissions error: %v", err)
 		}
 
-		tenantPerms, ok := perms["__tenant:default"]
-		if !ok {
-			t.Fatalf("expected __tenant:default in permissions, got keys: %v", keysOf(perms))
+		// Instance roles are reported per instance, as Permit's PDP does.
+		if _, ok := perms["__tenant:default"]; ok {
+			t.Errorf("expected no tenant-level set for instance-only roles, got keys: %v", keysOf(perms))
 		}
-
-		if tenantPerms.Tenant.Key != "default" {
-			t.Errorf("expected tenant key 'default', got %q", tenantPerms.Tenant.Key)
+		want := map[string][]string{
+			"folder:budget":   {"folder:read", "folder:write"},
+			"document:report": {"document:read", "document:edit"},
 		}
-
-		// user-1 has: folder:read, folder:write (direct), document:read, document:edit (derived)
-		expectedPerms := map[string]bool{
-			"folder:read":   true,
-			"folder:write":  true,
-			"document:read": true,
-			"document:edit": true,
-		}
-		for _, p := range tenantPerms.Permissions {
-			delete(expectedPerms, p)
-		}
-		if len(expectedPerms) > 0 {
-			t.Errorf("missing permissions: %v, got: %v", expectedPerms, tenantPerms.Permissions)
-		}
-
-		// user-1 should have roles
-		if len(tenantPerms.Roles) == 0 {
-			t.Error("expected user-1 to have roles")
+		for instKey, wantPerms := range want {
+			set, ok := perms[instKey]
+			if !ok {
+				t.Fatalf("expected %s in permissions, got keys: %v", instKey, keysOf(perms))
+			}
+			if set.Tenant.Key != "default" {
+				t.Errorf("%s: expected tenant key 'default', got %q", instKey, set.Tenant.Key)
+			}
+			if set.Resource == nil || set.Resource.Type+":"+set.Resource.Key != instKey {
+				t.Errorf("%s: expected resource details, got %+v", instKey, set.Resource)
+			}
+			got := make(map[string]bool)
+			for _, p := range set.Permissions {
+				got[p] = true
+			}
+			for _, p := range wantPerms {
+				if !got[p] {
+					t.Errorf("%s: missing permission %s, got %v", instKey, p, set.Permissions)
+				}
+			}
+			if len(set.Roles) == 0 {
+				t.Errorf("%s: expected roles", instKey)
+			}
 		}
 	})
 

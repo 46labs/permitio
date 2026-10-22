@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -30,6 +31,8 @@ func (s *Store) CreateResourceInstance(key, resource string, tenant *string, att
 		}
 	}
 	s.resourceInstances[instKey] = ri
+	// An assignment accepted before the instance existed is rechecked against its tenant.
+	s.materializeUnlocked()
 	return ri, nil
 }
 
@@ -74,5 +77,14 @@ func (s *Store) DeleteResourceInstance(instKey string) error {
 		return fmt.Errorf("resource instance %q not found", instKey)
 	}
 	delete(s.resourceInstances, instKey)
+
+	// Permit removes an instance's role assignments and relationships with it.
+	s.roleAssignments = slices.DeleteFunc(s.roleAssignments, func(ra RoleAssignment) bool {
+		return ra.ResourceInstance != nil && *ra.ResourceInstance == instKey
+	})
+	s.relationshipTuples = slices.DeleteFunc(s.relationshipTuples, func(rt RelationshipTuple) bool {
+		return rt.Subject == instKey || rt.Object == instKey
+	})
+	s.materializeUnlocked()
 	return nil
 }
