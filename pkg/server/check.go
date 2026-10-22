@@ -123,15 +123,17 @@ func (s *Server) handleUserPermissionsImpl(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req struct {
-		User    checkUser `json:"user"`
-		Tenants []string  `json:"tenants,omitempty"`
+		User          checkUser `json:"user"`
+		Tenants       []string  `json:"tenants,omitempty"`
+		Resources     []string  `json:"resources,omitempty"`
+		ResourceTypes []string  `json:"resource_types,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	perms := s.store.GetUserPermissions(req.User.Key, req.Tenants)
+	perms := s.store.GetUserPermissions(req.User.Key, req.Tenants, req.Resources, req.ResourceTypes)
 
 	// The SDK expects the response to directly be a map of tenant keys to permission sets.
 	writeJSON(w, http.StatusOK, perms)

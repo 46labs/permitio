@@ -12,6 +12,19 @@ func (s *Store) CreateRoleAssignment(user, role, tenant string) (*RoleAssignment
 func (s *Store) CreateRoleAssignmentWithInstance(user, role, tenant string, resourceInstance *string) (*RoleAssignment, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if resourceInstance != nil {
+		if !s.instanceInTenant(*resourceInstance, tenant) {
+			return nil, fmt.Errorf("resource instance %q does not belong to tenant %q", *resourceInstance, tenant)
+		}
+		// An instance without a tenant is owned by the tenant of its first assignment.
+		if _, owned := s.instanceTenant(*resourceInstance); !owned {
+			for _, ra := range s.roleAssignments {
+				if ptrStrEq(ra.ResourceInstance, resourceInstance) && ra.Tenant != tenant {
+					return nil, fmt.Errorf("resource instance %q is assigned in tenant %q", *resourceInstance, ra.Tenant)
+				}
+			}
+		}
+	}
 	// Check for duplicates
 	for _, ra := range s.roleAssignments {
 		if ra.User == user && ra.Role == role && ra.Tenant == tenant && ptrStrEq(ra.ResourceInstance, resourceInstance) {

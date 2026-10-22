@@ -2,6 +2,8 @@ package store
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -14,135 +16,140 @@ func (s *Store) Materialize() {
 }
 
 func (s *Store) materializeUnlocked() {
-	s.tupleIndex = make(map[string]map[string][]string)
+	s.tupleIndex = make(map[string]map[string][]tupleEdge)
 	s.effectivePerms = make(map[string]bool)
 	s.userPerms = make(map[string]map[string][]string)
 	s.userRoles = make(map[string]map[string][]string)
+	s.instancePerms = make(map[string]map[string]map[string][]string)
+	s.instanceRoles = make(map[string]map[string]map[string][]string)
 
-	// 1. Build tupleIndex from relationship tuples.
-	//    tupleIndex maps subject "type:key" -> relation -> []object "type:key"
 	for _, rt := range s.relationshipTuples {
 		if s.tupleIndex[rt.Subject] == nil {
-			s.tupleIndex[rt.Subject] = make(map[string][]string)
+			s.tupleIndex[rt.Subject] = make(map[string][]tupleEdge)
 		}
-		s.tupleIndex[rt.Subject][rt.Relation] = append(s.tupleIndex[rt.Subject][rt.Relation], rt.Object)
+		s.tupleIndex[rt.Subject][rt.Relation] = append(s.tupleIndex[rt.Subject][rt.Relation], tupleEdge{object: rt.Object, tenant: rt.Tenant})
 	}
 
-	// 2. Process each role assignment.
 	for _, ra := range s.roleAssignments {
-		user := ra.User
-		tenant := ra.Tenant
-
-		// Ensure maps exist for this user.
-		if s.userPerms[user] == nil {
-			s.userPerms[user] = make(map[string][]string)
-		}
-		if s.userRoles[user] == nil {
-			s.userRoles[user] = make(map[string][]string)
-		}
-
 		if ra.ResourceInstance != nil {
-			// Resource-instance-level role assignment (ReBAC).
-			instKey := *ra.ResourceInstance // e.g. "folder:budget"
-			parts := strings.SplitN(instKey, ":", 2)
-			if len(parts) != 2 {
+			s.materializeInstanceAssignment(ra)
+			continue
+		}
+
+		role, ok := s.roles[ra.Role]
+		if !ok {
+			continue
+		}
+		s.userRoles[ra.User] = appendNested(s.userRoles[ra.User], ra.Tenant, ra.Role)
+		for _, perm := range role.Permissions {
+			s.userPerms[ra.User] = appendNested(s.userPerms[ra.User], ra.Tenant, perm)
+			// A tenant-level role applies to every instance, marked "*".
+			parts := strings.SplitN(perm, ":", 2)
+			if len(parts) == 2 {
+				s.effectivePerms[fmt.Sprintf("%s|%s|%s|*|%s", ra.User, parts[1], parts[0], ra.Tenant)] = true
+			}
+		}
+	}
+}
+
+// tupleEdge is one relationship tuple seen from its subject.
+type tupleEdge struct {
+	object string
+	tenant string
+}
+
+// derivedGrant is a resource role a user holds on one instance.
+type derivedGrant struct {
+	resType string
+	key     string
+	role    string
+}
+
+// materializeInstanceAssignment grants a resource role and follows implicit
+// grants through relationship tuples to any depth.
+func (s *Store) materializeInstanceAssignment(ra RoleAssignment) {
+	parts := strings.SplitN(*ra.ResourceInstance, ":", 2)
+	if len(parts) != 2 || !s.instanceInTenant(*ra.ResourceInstance, ra.Tenant) {
+		return
+	}
+
+	queue := []derivedGrant{{resType: parts[0], key: parts[1], role: ra.Role}}
+	visited := make(map[derivedGrant]bool)
+	for len(queue) > 0 {
+		g := queue[0]
+		queue = queue[1:]
+		if visited[g] {
+			continue
+		}
+		visited[g] = true
+		if _, ok := s.resourceRoles[g.resType][g.role]; !ok {
+			continue
+		}
+
+		instKey := g.resType + ":" + g.key
+		appendInstance(s.instanceRoles, ra.User, ra.Tenant, instKey, g.resType+"#"+g.role)
+		for _, perm := range s.resolveResourceRolePermissions(g.resType, g.role) {
+			s.effectivePerms[fmt.Sprintf("%s|%s|%s|%s|%s", ra.User, perm.action, perm.resource, g.key, ra.Tenant)] = true
+			appendInstance(s.instancePerms, ra.User, ra.Tenant, instKey, perm.resource+":"+perm.action)
+		}
+
+		// An implicit grant gives TargetRole on Y when the user holds Role on
+		// X of type OnResource and X --LinkedByRelation--> Y.
+		for _, ig := range s.implicitGrants {
+			if ig.OnResource != g.resType || ig.Role != g.role {
 				continue
 			}
-			resType := parts[0]
-			instanceKey := parts[1]
-			roleKey := ra.Role
-
-			// Look up the resource role.
-			resRoles, ok := s.resourceRoles[resType]
-			if !ok {
-				continue
-			}
-			rr, ok := resRoles[roleKey]
-			if !ok {
-				continue
-			}
-
-			// Track role for the user in this tenant.
-			roleLabel := fmt.Sprintf("%s#%s", resType, roleKey)
-			s.userRoles[user][tenant] = appendUnique(s.userRoles[user][tenant], roleLabel)
-
-			// Grant direct permissions from the role.
-			for _, perm := range s.resolveResourceRolePermissions(resType, roleKey) {
-				permKey := fmt.Sprintf("%s|%s|%s|%s|%s", user, perm.action, perm.resource, instanceKey, tenant)
-				s.effectivePerms[permKey] = true
-				permLabel := fmt.Sprintf("%s:%s", perm.resource, perm.action)
-				s.userPerms[user][tenant] = appendUnique(s.userPerms[user][tenant], permLabel)
-			}
-
-			// Follow implicit grants.
-			_ = rr // already looked up
-			for _, ig := range s.implicitGrants {
-				// The implicit grant model:
-				// Created at resources/{targetResource}/roles/{targetRole}/implicit_grants
-				// Body: {role: sourceRole, on_resource: sourceResource, linked_by_relation: relation}
-				//
-				// Meaning: if a user has sourceRole on sourceResource instance X,
-				// and X --relation--> targetResource instance Y (via tuple),
-				// then the user gets targetRole on Y.
-				//
-				// Match: source resource type and source role must match.
-				if ig.OnResource != resType || ig.Role != roleKey {
+			for _, edge := range s.tupleIndex[instKey][ig.LinkedByRelation] {
+				tp := strings.SplitN(edge.object, ":", 2)
+				if len(tp) != 2 || tp[0] != ig.TargetResource {
 					continue
 				}
-
-				// Follow tuples from the source instance via the relation.
-				targets := s.tupleIndex[instKey][ig.LinkedByRelation]
-				for _, targetInst := range targets {
-					targetParts := strings.SplitN(targetInst, ":", 2)
-					if len(targetParts) != 2 {
-						continue
-					}
-					targetType := targetParts[0]
-					targetKey := targetParts[1]
-
-					// Verify the target resource type matches.
-					if targetType != ig.TargetResource {
-						continue
-					}
-
-					// Grant the derived (target) role's permissions on the target instance.
-					for _, perm := range s.resolveResourceRolePermissions(targetType, ig.TargetRole) {
-						permKey := fmt.Sprintf("%s|%s|%s|%s|%s", user, perm.action, perm.resource, targetKey, tenant)
-						s.effectivePerms[permKey] = true
-						permLabel := fmt.Sprintf("%s:%s", perm.resource, perm.action)
-						s.userPerms[user][tenant] = appendUnique(s.userPerms[user][tenant], permLabel)
-					}
-
-					// Track the derived role.
-					derivedRoleLabel := fmt.Sprintf("%s#%s", targetType, ig.TargetRole)
-					s.userRoles[user][tenant] = appendUnique(s.userRoles[user][tenant], derivedRoleLabel)
+				if !s.edgeInTenant(edge, ra.Tenant) {
+					continue
 				}
-			}
-		} else {
-			// Global (tenant-level) role assignment.
-			roleKey := ra.Role
-			role, ok := s.roles[roleKey]
-			if !ok {
-				continue
-			}
-
-			s.userRoles[user][tenant] = appendUnique(s.userRoles[user][tenant], roleKey)
-
-			for _, perm := range role.Permissions {
-				// Global role permissions are in "resource:action" format.
-				s.userPerms[user][tenant] = appendUnique(s.userPerms[user][tenant], perm)
-
-				// Also add to effectivePerms for wildcard matching.
-				// For global roles, the permission applies to all instances.
-				// We mark it with "*" as the instance key.
-				parts := strings.SplitN(perm, ":", 2)
-				if len(parts) == 2 {
-					permKey := fmt.Sprintf("%s|%s|%s|*|%s", user, parts[1], parts[0], tenant)
-					s.effectivePerms[permKey] = true
-				}
+				queue = append(queue, derivedGrant{resType: tp[0], key: tp[1], role: ig.TargetRole})
 			}
 		}
 	}
+}
+
+// instanceTenant returns the tenant of a created instance that has one.
+func (s *Store) instanceTenant(instKey string) (string, bool) {
+	ri, ok := s.resourceInstances[instKey]
+	if !ok || ri.Tenant == nil || *ri.Tenant == "" {
+		return "", false
+	}
+	return *ri.Tenant, true
+}
+
+// instanceInTenant accepts an instance not yet created or created without a tenant.
+func (s *Store) instanceInTenant(instKey, tenant string) bool {
+	owner, ok := s.instanceTenant(instKey)
+	return !ok || owner == tenant
+}
+
+// edgeInTenant uses the tuple's tenant only when its target has none, as Permit does.
+func (s *Store) edgeInTenant(edge tupleEdge, tenant string) bool {
+	if owner, ok := s.instanceTenant(edge.object); ok {
+		return owner == tenant
+	}
+	return edge.tenant == "" || edge.tenant == tenant
+}
+
+// appendInstance adds val under user -> tenant -> instKey.
+func appendInstance(m map[string]map[string]map[string][]string, user, tenant, instKey, val string) {
+	if m[user] == nil {
+		m[user] = make(map[string]map[string][]string)
+	}
+	m[user][tenant] = appendNested(m[user][tenant], instKey, val)
+}
+
+func appendNested(m map[string][]string, key, val string) map[string][]string {
+	if m == nil {
+		m = make(map[string][]string)
+	}
+	m[key] = appendUnique(m[key], val)
+	return m
 }
 
 type resolvedPerm struct {
@@ -224,65 +231,89 @@ type TenantResult struct {
 	Attributes map[string]interface{} `json:"attributes"`
 }
 
-// UserPermissionSet represents permissions for a user in a tenant.
+// UserPermissionSet represents permissions for a user on a tenant or on one
+// resource instance.
 type UserPermissionSet struct {
-	Tenant      TenantResult `json:"tenant"`
-	Permissions []string     `json:"permissions"`
-	Roles       []string     `json:"roles"`
+	Tenant      TenantResult     `json:"tenant"`
+	Resource    *ResourceDetails `json:"resource,omitempty"`
+	Permissions []string         `json:"permissions"`
+	Roles       []string         `json:"roles"`
 }
 
-// GetUserPermissions returns the permissions for a user across the given tenants.
-// If tenants is empty, returns permissions for all tenants.
-func (s *Store) GetUserPermissions(user string, tenants []string) map[string]UserPermissionSet {
+// ResourceDetails identifies the instance a permission set applies to.
+type ResourceDetails struct {
+	Type       string                 `json:"type"`
+	Key        string                 `json:"key"`
+	Attributes map[string]interface{} `json:"attributes"`
+}
+
+// TenantResourceType is the resource type naming tenant-level permission sets.
+const TenantResourceType = "__tenant"
+
+// GetUserPermissions returns a user's permission sets, keyed "__tenant:<key>"
+// for tenant-level roles and "<type>:<key>" for resource instances. Empty
+// tenants means all tenants. resources ("type:key") and resourceTypes narrow
+// the sets returned; "__tenant" in resourceTypes selects tenant-level sets.
+func (s *Store) GetUserPermissions(user string, tenants, resources, resourceTypes []string) map[string]UserPermissionSet {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	result := make(map[string]UserPermissionSet)
-
-	userPerms := s.userPerms[user]
-	userRoles := s.userRoles[user]
-
-	if userPerms == nil && userRoles == nil {
-		return result
+	if len(tenants) == 0 {
+		tenants = slices.Collect(maps.Keys(s.tenants))
+	}
+	wanted := func(resType, instKey string) bool {
+		if len(resources) == 0 && len(resourceTypes) == 0 {
+			return true
+		}
+		return slices.Contains(resources, instKey) || slices.Contains(resourceTypes, resType)
 	}
 
-	// Determine which tenants to include.
-	tenantSet := make(map[string]bool)
-	if len(tenants) > 0 {
-		for _, t := range tenants {
-			tenantSet[t] = true
-		}
-	} else {
-		// All tenants.
-		for t := range s.tenants {
-			tenantSet[t] = true
-		}
-	}
+	for _, tenantKey := range tenants {
+		tenant := TenantResult{Key: tenantKey, Attributes: s.tenantAttributes(tenantKey)}
 
-	for tenantKey := range tenantSet {
-		perms := userPerms[tenantKey]
-		roles := userRoles[tenantKey]
-		if len(perms) == 0 && len(roles) == 0 {
-			continue
+		perms, roles := s.userPerms[user][tenantKey], s.userRoles[user][tenantKey]
+		if (len(perms) > 0 || len(roles) > 0) && wanted(TenantResourceType, TenantResourceType+":"+tenantKey) {
+			result[TenantResourceType+":"+tenantKey] = UserPermissionSet{
+				Tenant:      tenant,
+				Permissions: nonNil(perms),
+				Roles:       nonNil(roles),
+			}
 		}
 
-		attrs := make(map[string]interface{})
-		if t, ok := s.tenants[tenantKey]; ok && t.Attributes != nil {
-			attrs = t.Attributes
-		}
-
-		key := fmt.Sprintf("__tenant:%s", tenantKey)
-		result[key] = UserPermissionSet{
-			Tenant: TenantResult{
-				Key:        tenantKey,
-				Attributes: attrs,
-			},
-			Permissions: perms,
-			Roles:       roles,
+		for instKey, instRoles := range s.instanceRoles[user][tenantKey] {
+			parts := strings.SplitN(instKey, ":", 2)
+			if !wanted(parts[0], instKey) {
+				continue
+			}
+			attrs := make(map[string]interface{})
+			if ri, ok := s.resourceInstances[instKey]; ok && ri.Attributes != nil {
+				attrs = ri.Attributes
+			}
+			result[instKey] = UserPermissionSet{
+				Tenant:      tenant,
+				Resource:    &ResourceDetails{Type: parts[0], Key: parts[1], Attributes: attrs},
+				Permissions: nonNil(s.instancePerms[user][tenantKey][instKey]),
+				Roles:       instRoles,
+			}
 		}
 	}
 
 	return result
+}
+
+func (s *Store) tenantAttributes(key string) map[string]interface{} {
+	if t, ok := s.tenants[key]; ok && t.Attributes != nil {
+		return t.Attributes
+	}
+	return make(map[string]interface{})
+}
+
+func nonNil(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // GetAllowedTenants checks permission across all tenants and returns the ones where it's allowed.

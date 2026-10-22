@@ -168,7 +168,7 @@ func (s *Server) handleUserRoles(w http.ResponseWriter, r *http.Request, userKey
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := s.store.DeleteRoleAssignment(userKey, body.Role, body.Tenant); err != nil {
+		if err := s.store.DeleteRoleAssignmentWithInstance(userKey, body.Role, body.Tenant, body.ResourceInstance); err != nil {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}

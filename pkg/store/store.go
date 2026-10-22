@@ -34,10 +34,12 @@ type Store struct {
 	roleAssignments    []RoleAssignment
 
 	// Indexes (rebuilt on materialize)
-	tupleIndex     map[string]map[string][]string // "type:key" -> relation -> ["type:key", ...]
-	effectivePerms map[string]bool                // "user|action|type|key|tenant" -> true
-	userPerms      map[string]map[string][]string // user -> tenant -> [permissions...]
-	userRoles      map[string]map[string][]string // user -> tenant -> [roles...]
+	tupleIndex     map[string]map[string][]tupleEdge         // subject "type:key" -> relation -> edges
+	effectivePerms map[string]bool                           // "user|action|type|key|tenant" -> true
+	userPerms      map[string]map[string][]string            // user -> tenant -> [permissions...]
+	userRoles      map[string]map[string][]string            // user -> tenant -> [roles...]
+	instancePerms  map[string]map[string]map[string][]string // user -> tenant -> "type:key" -> [permissions...]
+	instanceRoles  map[string]map[string]map[string][]string // user -> tenant -> "type:key" -> ["type#role"...]
 
 	// Config
 	allowAll bool
@@ -52,10 +54,12 @@ func New() *Store {
 		tenants:           make(map[string]*Tenant),
 		users:             make(map[string]*User),
 		resourceInstances: make(map[string]*ResourceInstance),
-		tupleIndex:        make(map[string]map[string][]string),
+		tupleIndex:        make(map[string]map[string][]tupleEdge),
 		effectivePerms:    make(map[string]bool),
 		userPerms:         make(map[string]map[string][]string),
 		userRoles:         make(map[string]map[string][]string),
+		instancePerms:     make(map[string]map[string]map[string][]string),
+		instanceRoles:     make(map[string]map[string]map[string][]string),
 	}
 }
 
