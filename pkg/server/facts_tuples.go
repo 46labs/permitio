@@ -37,8 +37,10 @@ func (s *Server) handleRelationshipTuples(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
-		tuples := s.store.ListRelationshipTuples()
-		writeJSON(w, http.StatusOK, tuples)
+		q := r.URL.Query()
+		tuples := s.store.ListRelationshipTuplesFiltered(q.Get("tenant"), q.Get("subject"), q.Get("relation"), q.Get("object"))
+		page, _ := paginate(r, tuples)
+		writeJSON(w, http.StatusOK, page)
 
 	case http.MethodDelete:
 		if isBulk {

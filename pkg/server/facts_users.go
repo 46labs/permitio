@@ -43,10 +43,11 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request, segs []stri
 		if len(segs) == 0 {
 			// List - return paginated format
 			users := s.store.ListUsers()
+			page, pages := paginate(r, users)
 			writeJSON(w, http.StatusOK, map[string]interface{}{
-				"data":        users,
+				"data":        page,
 				"total_count": len(users),
-				"page_count":  1,
+				"page_count":  pages,
 			})
 		} else {
 			u, err := s.store.GetUser(segs[0])

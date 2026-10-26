@@ -47,6 +47,14 @@ type ResourceRole struct {
 	Permissions []string `json:"permissions,omitempty"`
 	Extends     []string `json:"extends,omitempty"`
 	ResourceID  string   `json:"resource_id"`
+	// GrantedTo lists the rules that derive this role; filled on reads.
+	GrantedTo *GrantedTo `json:"granted_to,omitempty"`
+}
+
+// GrantedTo is Permit's derived-role block on a resource role.
+type GrantedTo struct {
+	ID            string          `json:"id"`
+	UsersWithRole []ImplicitGrant `json:"users_with_role,omitempty"`
 }
 
 type Relation struct {
