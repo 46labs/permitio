@@ -42,3 +42,19 @@ func (s *Store) DeleteRelationshipTuple(subject, relation, object string) error 
 	}
 	return fmt.Errorf("relationship tuple not found")
 }
+
+// ListRelationshipTuplesFiltered lists tuples in creation order, narrowed by
+// tenant, subject, relation and object when given.
+func (s *Store) ListRelationshipTuplesFiltered(tenant, subject, relation, object string) []RelationshipTuple {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]RelationshipTuple, 0, len(s.relationshipTuples))
+	for _, rt := range s.relationshipTuples {
+		if (tenant != "" && rt.Tenant != tenant) || (subject != "" && rt.Subject != subject) ||
+			(relation != "" && rt.Relation != relation) || (object != "" && rt.Object != object) {
+			continue
+		}
+		result = append(result, rt)
+	}
+	return result
+}

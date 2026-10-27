@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -29,4 +30,30 @@ func extractPathSegments(path, prefix string) []string {
 		return nil
 	}
 	return strings.Split(trimmed, "/")
+}
+
+// Permit's list defaults: page 1, 30 per page, at most 100.
+const (
+	defaultPerPage = 30
+	maxPerPage     = 100
+)
+
+// paginate returns one page of items, as Permit pages its lists (page and
+// per_page, 1-based), and the number of pages.
+func paginate[T any](r *http.Request, items []T) ([]T, int) {
+	page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	perPage, err := strconv.Atoi(r.URL.Query().Get("per_page"))
+	if err != nil || perPage < 1 {
+		perPage = defaultPerPage
+	}
+	perPage = min(perPage, maxPerPage)
+	pages := (len(items) + perPage - 1) / perPage
+	start := (page - 1) * perPage
+	if start >= len(items) {
+		return []T{}, pages
+	}
+	return items[start:min(start+perPage, len(items))], pages
 }

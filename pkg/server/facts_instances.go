@@ -34,8 +34,10 @@ func (s *Server) handleResourceInstances(w http.ResponseWriter, r *http.Request,
 	case http.MethodGet:
 		if len(segs) == 0 {
 			// List
-			instances := s.store.ListResourceInstances()
-			writeJSON(w, http.StatusOK, instances)
+			q := r.URL.Query()
+			instances := s.store.ListResourceInstancesFiltered(q.Get("tenant"), q.Get("resource"), q.Get("search"))
+			page, _ := paginate(r, instances)
+			writeJSON(w, http.StatusOK, page)
 		} else {
 			// Get by "type:key" - may be URL-encoded
 			instKey := decodeInstanceKey(segs)

@@ -3,6 +3,8 @@ package store
 import (
 	"fmt"
 	"slices"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -87,4 +89,31 @@ func (s *Store) DeleteResourceInstance(instKey string) error {
 	})
 	s.materializeUnlocked()
 	return nil
+}
+
+// ListResourceInstancesFiltered lists instances in a stable order, narrowed
+// by tenant, resource type, and a key substring when given.
+func (s *Store) ListResourceInstancesFiltered(tenant, resource, search string) []*ResourceInstance {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]*ResourceInstance, 0, len(s.resourceInstances))
+	for _, ri := range s.resourceInstances {
+		if tenant != "" && (ri.Tenant == nil || *ri.Tenant != tenant) {
+			continue
+		}
+		if resource != "" && ri.Resource != resource {
+			continue
+		}
+		if search != "" && !strings.Contains(ri.Key, search) {
+			continue
+		}
+		result = append(result, ri)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Resource != result[j].Resource {
+			return result[i].Resource < result[j].Resource
+		}
+		return result[i].Key < result[j].Key
+	})
+	return result
 }

@@ -40,7 +40,9 @@ func (s *Store) GetResourceRole(resourceKey, key string) (*ResourceRole, error) 
 	if !ok {
 		return nil, fmt.Errorf("resource role %q not found on resource %q", key, resourceKey)
 	}
-	return rr, nil
+	out := *rr
+	out.GrantedTo = s.grantedToUnlocked(resourceKey, key)
+	return &out, nil
 }
 
 func (s *Store) ListResourceRoles(resourceKey string) []*ResourceRole {
@@ -49,7 +51,9 @@ func (s *Store) ListResourceRoles(resourceKey string) []*ResourceRole {
 	roles := s.resourceRoles[resourceKey]
 	result := make([]*ResourceRole, 0, len(roles))
 	for _, rr := range roles {
-		result = append(result, rr)
+		out := *rr
+		out.GrantedTo = s.grantedToUnlocked(resourceKey, rr.Key)
+		result = append(result, &out)
 	}
 	return result
 }

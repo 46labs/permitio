@@ -146,10 +146,13 @@ helm install permitio ./charts/permitio
 
 The Helm chart mounts schema.yaml and data.yaml via ConfigMap at `/config`.
 
+## Lists and Derived Roles
+
+Fact lists page as Permit pages them (`page` from 1, `per_page` 30 by default, at most 100) in a stable order, after their filters: users; resource instances by `tenant`, `resource`, `search`; role assignments by `user`, `role`, `tenant`; relationship tuples by `tenant`, `subject`, `relation`, `object`. An implicit grant created twice is one grant, and a resource role read carries its derivations under `granted_to.users_with_role`.
+
 ## Differences from Real Permit.io
 
 - No cloud connectivity. All state is in-memory.
 - No API key validation. Any bearer token is accepted.
 - Single environment. The proj/env path segments are ignored.
 - No persistence. State resets on restart (config files reload).
-- No pagination. List endpoints return all results.

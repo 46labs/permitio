@@ -40,7 +40,8 @@ func (s *Server) handleRoleAssignments(w http.ResponseWriter, r *http.Request, s
 		tenantFilter := r.URL.Query().Get("tenant")
 		roleFilter := r.URL.Query().Get("role")
 		assignments := s.store.ListRoleAssignmentsFiltered(userFilter, roleFilter, tenantFilter)
-		writeJSON(w, http.StatusOK, assignments)
+		page, _ := paginate(r, assignments)
+		writeJSON(w, http.StatusOK, page)
 
 	case http.MethodDelete:
 		if isBulk {

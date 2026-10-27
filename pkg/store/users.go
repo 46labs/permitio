@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -40,6 +41,8 @@ func (s *Store) ListUsers() []*User {
 	for _, u := range s.users {
 		result = append(result, u)
 	}
+	// Map order is random; pages need a stable one.
+	sort.Slice(result, func(i, j int) bool { return result[i].Key < result[j].Key })
 	return result
 }
 
