@@ -40,13 +40,15 @@ func seedReBAC(t *testing.T, env *testEnv) {
 
 	// Create resource roles
 	ownerRole := *models.NewResourceRoleCreate("owner", "Owner")
-	ownerRole.SetPermissions([]string{"folder:read", "folder:write"})
+	// Permit's form: action keys of the role's own resource.
+	ownerRole.SetPermissions([]string{"read", "write"})
 	_, err = env.client.Api.ResourceRoles.Create(ctx, "folder", ownerRole)
 	if err != nil {
 		t.Fatalf("Create folder owner role: %v", err)
 	}
 
 	viewerRole := *models.NewResourceRoleCreate("viewer", "Viewer")
+	// The "resource:action" form earlier configs used still works.
 	viewerRole.SetPermissions([]string{"folder:read"})
 	_, err = env.client.Api.ResourceRoles.Create(ctx, "folder", viewerRole)
 	if err != nil {
@@ -54,7 +56,7 @@ func seedReBAC(t *testing.T, env *testEnv) {
 	}
 
 	editorRole := *models.NewResourceRoleCreate("editor", "Editor")
-	editorRole.SetPermissions([]string{"document:read", "document:edit"})
+	editorRole.SetPermissions([]string{"read", "edit"})
 	_, err = env.client.Api.ResourceRoles.Create(ctx, "document", editorRole)
 	if err != nil {
 		t.Fatalf("Create document editor role: %v", err)

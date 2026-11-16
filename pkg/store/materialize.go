@@ -172,15 +172,18 @@ func (s *Store) resolveResourceRolePermissions(resType, roleKey string) []resolv
 	var perms []resolvedPerm
 	seen := make(map[string]bool)
 
-	// Direct permissions.
+	// Direct permissions. Permit takes a resource role's permissions as
+	// action keys of its own resource ("view"); "resource:action" is kept
+	// for configs written against earlier versions of this mock.
 	for _, p := range rr.Permissions {
-		parts := strings.SplitN(p, ":", 2)
-		if len(parts) == 2 {
-			key := parts[0] + ":" + parts[1]
-			if !seen[key] {
-				perms = append(perms, resolvedPerm{resource: parts[0], action: parts[1]})
-				seen[key] = true
-			}
+		res, action := resType, p
+		if parts := strings.SplitN(p, ":", 2); len(parts) == 2 {
+			res, action = parts[0], parts[1]
+		}
+		key := res + ":" + action
+		if !seen[key] {
+			perms = append(perms, resolvedPerm{resource: res, action: action})
+			seen[key] = true
 		}
 	}
 
